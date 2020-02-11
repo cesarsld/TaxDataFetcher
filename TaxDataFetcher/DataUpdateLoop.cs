@@ -13,22 +13,21 @@ namespace TaxDataFetcher
         public static int lastUnixTimeCheck = 0;
         public static readonly int unixTimeBetweenUpdates = 86400;
 
+
         public static async Task UpdateServiceCheckLoop()
         {
+            lastUnixTimeCheck = await DatabaseConnection.GetLastTimeCheckpoint();
             while (true)
             {
                 int unixTime = Convert.ToInt32(((DateTimeOffset)(DateTime.UtcNow)).ToUnixTimeSeconds());
-                if (lastUnixTimeCheck == 0) UpdateUnixLastCheck();
                 Console.Clear();
                 Console.WriteLine($"Time before next update :  {86400 - (unixTime - lastUnixTimeCheck)} seconds");
                 if (unixTime - lastUnixTimeCheck >= unixTimeBetweenUpdates)
                 {
                     lastUnixTimeCheck = unixTime;
-                    using (var tw = new StreamWriter("AxieData/LastTimeCheck.txt"))
-                    {
-                        tw.Write(lastUnixTimeCheck.ToString());
-                    }
                     await AuctionDataGetter.FetchSalesData();
+                    await EthPriceFetcher.FetchEthPrice();
+                    await DatabaseConnection.SetLastTimeCheckpoint(lastUnixTimeCheck);
                 }
 
                 await Task.Delay(60000);
